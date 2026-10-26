@@ -1,0 +1,30 @@
+# Libraries used by the notebooks and the Review Radar app (Python 3.14, Windows laptop).
+# Install with: pip install -r requirements.txt
+# Stage 5 fine-tuning ran on Google Colab with Colab's own library versions.
+
+# Data analysis and machine learning
+pandas==3.0.6
+numpy==2.5.4
+pyarrow==26.0.0
+scipy==1.18.1
+scikit-learn==1.9.1
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Language models and NLP
+torch==2.14.1
+transformers==5.20.2
+sentence-transformers==6.2.0
+sentencepiece==0.2.2
+spacy==3.8.16
+# Portuguese spaCy model: python -m spacy download pt_core_news_sm
+
+# App
+gradio==6.30.0
+
+# Tests: python -m pytest
+pytest==9.1.1
+
+# Notebooks and data download
+jupyterlab==4.6.4
+kagglehub==1.0.3

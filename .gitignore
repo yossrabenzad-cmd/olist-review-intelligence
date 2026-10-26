@@ -1,0 +1,44 @@
+# Publish only what is listed here. Everything else stays on this laptop.
+# Rule: ignore everything (*), then allow specific files back in with "!".
+
+*
+!*/
+
+# Project documents
+!.gitignore
+!README.md
+!AGENTS.md
+!requirements.txt
+!docs/*.md
+
+# Code
+!app/app.py
+!app/build_index.py
+!src/*.py
+!sql/*.sql
+!sql/bigquery/*.sql
+!tests/*.py
+
+# Results (findings, charts, aggregated plan; no raw reviews)
+!reports/*.md
+!reports/figures/*.png
+!reports/segment_action_plan_brazil.csv
+
+# Clean notebook copies only (working notebooks in notebooks/ stay local)
+!notebooks_public/*.ipynb
+
+# Never published, even if a rule above matches by mistake
+data/
+models/
+.venv/
+notebooks/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+*.db
+*.sqlite
+*.zip
+*.npy
+*.parquet
+.env
+reports/review_radar_results.csv
