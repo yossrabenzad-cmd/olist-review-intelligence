@@ -27,3 +27,12 @@ def test_report_never_invents_ai_results():
     page = render(analyse(df), "Test Shop", "Copenhagen", "rugs")
     assert "To be checked by hand" in page
     assert "Recommended in" not in page
+
+
+def test_examples_are_not_repeated():
+    texts = pd.Series(["Ingen svar og pengene er trukket, ingen levering endnu",
+                       "Pengene er trukket men ingen refusion endnu efter flere uger",
+                       "Ingen svar på mails i to uger, meget dårlig kundeservice her",
+                       "Leveringen tog tre uger og ingen svar fra jer om pakken"])
+    examples = [r["example"] for r in themes(texts, COMPLAINTS)]
+    assert len(examples) == len(set(examples))

@@ -28,6 +28,25 @@ A Gradio app for a marketing or CX manager. It runs on a laptop CPU, with no pai
 
 Requirements and status: [docs/requirements.md](docs/requirements.md).
 
+## Review-to-Action Agent
+
+Turns new reviews into reply drafts a human approves, every morning, without anyone reading the whole export.
+
+```
+new reviews (CSV) -> skip ones already seen -> label and tag complaints -> draft a Danish reply
+      -> guardrail checks -> Notion: Waiting / Escalated -> human approves, edits or rejects
+      -> next run records the decision
+```
+
+- **Only new reviews:** each review gets a fingerprint, so a daily run handles only what came in since the last one.
+- **Guardrails on every draft:** a draft is flagged, never sent, if it promises a refund, compensation or a date, invents an order number, leaves a [placeholder], copies the review, slips into Norwegian or English, or is empty. The checks were written from real failures of a small local model in testing.
+- **Knows what not to answer:** reviews that mention fraud, police, lawyers or bank disputes skip the AI and go straight to a human as Escalated.
+- **Human approval in Notion:** each draft arrives as a row with Status Waiting. Approve, reject or edit it there; edited text is what gets saved, and every decision is logged with its time. Nothing is posted to customers.
+- **Model choice measured, not assumed:** a 1.5B local model kept review text on the laptop but wrote weak Danish; a larger open model on Groq (gpt-oss-120b) passed all checks on the same complaints, so drafting uses it, with the local model kept as a fallback.
+- **Runs on a schedule:** one command runs the loop (collect decisions, read new reviews, draft, send to Notion), logs every run including failures, and Windows Task Scheduler starts it daily.
+
+Code: [src/agent.py](src/agent.py), [src/drafts.py](src/drafts.py), [src/approvals.py](src/approvals.py), [src/pipeline.py](src/pipeline.py). Also: [src/snapshot.py](src/snapshot.py) builds a one-page review snapshot for a webshop.
+
 ## How it was built
 
 | Stage | What | Notebook | Findings |
@@ -51,9 +70,9 @@ Fine-tuning ran in a separate Google Colab notebook, not included here.
 
 ```
 app/                 Review Radar (app.py) and the search index builder
-src/                 Reusable code: RFM toolkit, review reading, themes, search, history, database build
+src/                 Reusable code: RFM toolkit, review reading, themes, search, history, database build, review snapshot, Review-to-Action Agent
 sql/                 10 SQL queries (SQLite), and the same 10 in BigQuery's dialect in sql/bigquery/
-tests/               18 pytest tests (run: python -m pytest)
+tests/               41 pytest tests (run: python -m pytest)
 notebooks_public/    Analysis notebooks, in order
 reports/             Findings per stage and charts
 docs/                Requirements and project board
