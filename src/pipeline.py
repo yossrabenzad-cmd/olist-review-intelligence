@@ -21,7 +21,7 @@ sys.path.insert(0, str(BASE))
 
 from src.agent import DB_PATH, connect, run as collect  # noqa: E402
 from src.approvals import Notion, pull, push  # noqa: E402
-from src.drafts import draft_queue, groq_llm, local_llm  # noqa: E402
+from src.drafts import DraftError, draft_queue, groq_llm, local_llm  # noqa: E402
 
 LOG_FILE = BASE / "data" / "agent_runs.log"
 
@@ -44,7 +44,10 @@ def run_once(csv, shop, generate, notion, db_path=DB_PATH, limit=50):
         s.update(pull(notion, shop, db_path=db_path))
         c = collect(csv, shop, db_path=db_path)
         s["new_reviews"], s["queued"] = c["new"], c["queued"]
-        results = draft_queue(shop, limit=limit, generate=generate, db_path=db_path)
+        try:
+            results = draft_queue(shop, limit=limit, generate=generate, db_path=db_path)
+        except DraftError as e:                   # model stopped: keep what was drafted, still send it
+            results, s["status"], s["error"] = e.results, "partial", str(e)[:500]
         for r in results:
             s[r["status"]] += 1
         s["pushed"] = push(notion, shop, db_path=db_path)

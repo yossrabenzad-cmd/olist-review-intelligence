@@ -72,7 +72,7 @@ Fine-tuning ran in a separate Google Colab notebook, not included here.
 app/                 Review Radar (app.py) and the search index builder
 src/                 Reusable code: RFM toolkit, review reading, themes, search, history, database build, review snapshot, Review-to-Action Agent
 sql/                 10 SQL queries (SQLite), and the same 10 in BigQuery's dialect in sql/bigquery/
-tests/               41 pytest tests (run: python -m pytest)
+tests/               43 pytest tests (run: python -m pytest)
 notebooks_public/    Analysis notebooks, in order
 reports/             Findings per stage and charts
 docs/                Requirements and project board

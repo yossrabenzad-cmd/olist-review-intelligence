@@ -91,3 +91,16 @@ def test_theme_labels_are_not_sent_to_the_model():
     from src.drafts import build_messages
     msg = build_messages("Batteriet virkede ikke", "Late or missing delivery", "Shop A")[1]["content"]
     assert "Late or missing delivery" not in msg
+
+
+class _Response:
+    def __init__(self, text, headers=None):
+        self.text, self.headers = text, headers or {}
+
+
+def test_retry_wait_reads_groq_rate_limit_messages():
+    from src.drafts import retry_wait
+    assert retry_wait(_Response("", {"retry-after": "4"})) == 5
+    assert abs(retry_wait(_Response("Please try again in 2.325s.")) - 3.325) < 1e-9
+    assert abs(retry_wait(_Response("Please try again in 640ms.")) - 1.64) < 1e-9
+    assert retry_wait(_Response("no hint")) == 20

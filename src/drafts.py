@@ -20,6 +20,7 @@ import difflib
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -116,14 +117,43 @@ def groq_llm():
         raise SystemExit('Set your key first, in PowerShell:  $env:GROQ_API_KEY = "your key"')
 
     def generate(messages):
-        r = requests.post(GROQ_URL, timeout=60, headers={"Authorization": f"Bearer {key}"},
-                          json=payload(messages))
-        if r.status_code != 200:
-            raise SystemExit(f"Groq said {r.status_code} for model '{GROQ_MODEL}': {r.text[:400]}\n"
-                             "If the model is not found, pick one from console.groq.com/docs/models and run:\n"
-                             '  $env:GROQ_MODEL = "openai/gpt-oss-120b"')
-        return r.json()["choices"][0]["message"]["content"].strip()
+        for attempt in range(RETRIES + 1):
+            r = requests.post(GROQ_URL, timeout=60, headers={"Authorization": f"Bearer {key}"},
+                              json=payload(messages))
+            if r.status_code == 429 and attempt < RETRIES:      # free tier: tokens per minute used up
+                time.sleep(retry_wait(r))
+                continue
+            if r.status_code != 200:
+                raise DraftError(f"Groq said {r.status_code} for model '{GROQ_MODEL}': {r.text[:400]}\n"
+                                 "If the model is not found, pick one from console.groq.com/docs/models and run:\n"
+                                 '  $env:GROQ_MODEL = "openai/gpt-oss-120b"')
+            return r.json()["choices"][0]["message"]["content"].strip()
     return generate
+
+
+RETRIES = 5
+
+
+def retry_wait(response):
+    """Seconds to wait after a 429: Groq's retry-after header, or the 'try again in 2.3s' text, plus a margin."""
+    header = response.headers.get("retry-after")
+    if header:
+        try:
+            return float(header) + 1
+        except ValueError:
+            pass
+    m = re.search(r"try again in ([0-9.]+)(ms|s)", response.text)
+    if m:
+        wait = float(m.group(1)) / (1000 if m.group(2) == "ms" else 1)
+        return min(wait + 1, 65)
+    return 20
+
+
+class DraftError(Exception):
+    """The model could not be reached. `results` holds the drafts saved before it stopped."""
+    def __init__(self, message, results=None):
+        super().__init__(message)
+        self.results = results or []
 
 
 def draft_queue(shop, limit=10, generate=None, db_path=DB_PATH, redo=False):
@@ -148,13 +178,18 @@ def draft_queue(shop, limit=10, generate=None, db_path=DB_PATH, redo=False):
                 results.append({"review": text, "themes": themes, "draft": "",
                                 "status": "escalated", "problems": ["needs a human: legal, fraud or police"]})
                 continue
-            draft = generate(build_messages(text, themes, shop))
+            try:
+                draft = generate(build_messages(text, themes, shop))
+            except Exception as e:
+                con.commit()                      # keep every draft made before the failure
+                raise DraftError(str(e), results) from e
             problems = check(draft, shop, text)
             status = "drafted" if not problems else "flagged"
             con.execute("UPDATE queue SET draft = ?, status = ?, updated_at = ? WHERE review_id = ?",
                         (draft, status, datetime.now().isoformat(timespec="seconds"), review_id))
             results.append({"review": text, "themes": themes, "draft": draft,
                             "status": status, "problems": problems})
+            con.commit()
     return results
 
 
